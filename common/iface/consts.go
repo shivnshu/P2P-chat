@@ -5,7 +5,8 @@ const (
 )
 
 type CommonArgs struct {
-	Type string
-	IP   string
-	Port int
+	Type  string
+	IP    string
+	Port  int
+	Alias string
 }
