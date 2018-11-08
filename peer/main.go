@@ -15,6 +15,10 @@ func Init() error {
 		return fmt.Errorf("Please provide master ip address and port number.")
 	}
 
+	if peer_args.Alias == "" {
+		return fmt.Errorf("Please provide alias to be used to recognize the peer.")
+	}
+
 	peer := Peer{}
 	peer.startPeerNode(peer_args)
 
