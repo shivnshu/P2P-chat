@@ -11,20 +11,19 @@ import (
 
 type Master struct {
 	PeersInfo []iface.PeerInfo
-	size      int
 }
 
-func (c Master) startMasterNode(args iface.CommonArgs) {
+func (c *Master) startMasterNode(args iface.CommonArgs) {
 	master_ip := args.IP
 	master_port := args.Port
 	err := c.startListening(master_ip, master_port)
 	if err != nil {
-		fmt.Printf("Unable to start listening @%s:%d", master_ip, master_port)
+		fmt.Printf("Unable to start listening @%s:%d\n", master_ip, master_port)
 		return
 	}
 }
 
-func (c Master) startListening(ip string, port int) error {
+func (c *Master) startListening(ip string, port int) error {
 	addr := iface.GetAddress(ip, port).String()
 	fmt.Println("Listening on", addr)
 	http.HandleFunc("/", c.requestHandler)
@@ -32,8 +31,8 @@ func (c Master) startListening(ip string, port int) error {
 	return err
 }
 
-func (c Master) requestHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("Got a request from %s", r.RemoteAddr)
+func (c *Master) requestHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("Got a request from %s\n", r.RemoteAddr)
 	buffer_size_str, present := r.URL.Query()["buffer_size"]
 	if present != true {
 		fmt.Println("GET paramater buffer_size not present")
@@ -63,12 +62,14 @@ func (c Master) requestHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // TODO: Take care of concurrency issues
-func (c Master) getPeersInfo(buffer_size int) []iface.PeerInfo {
+func (c *Master) getPeersInfo(buffer_size int) []iface.PeerInfo {
 	var result []iface.PeerInfo
+	result = c.PeersInfo
 	return result
 }
 
 // TODO: Take care of concurrency issues
-func (c Master) addToPeersInfo(peerInfo iface.PeerInfo) {
+func (c *Master) addToPeersInfo(peerInfo iface.PeerInfo) {
+	c.PeersInfo = append(c.PeersInfo, peerInfo)
 	return
 }
