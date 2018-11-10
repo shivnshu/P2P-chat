@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/shivnshu/P2P-chat/common/iface"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
@@ -34,8 +33,9 @@ func (c *Peer) startPeerNode(args iface.CommonArgs) {
 	if err != nil {
 		panic(err)
 	}
-
 	c.Neighbours = neighbours
+
+	go c.startChatBox()
 
 	err = c.startListening()
 	if err != nil {
@@ -58,12 +58,12 @@ func (c *Peer) registerWithMaster(ip string, port int) ([]iface.PeerInfo, error)
 	}
 	defer resp.Body.Close()
 
-	fmt.Println("response Status:", resp.Status)
-	fmt.Println("response Headers:", resp.Header)
-	body, _ := ioutil.ReadAll(resp.Body)
-	fmt.Println("response Body:", string(body))
-
-	return nil, nil
+	var neighbours []iface.PeerInfo
+	err = json.NewDecoder(resp.Body).Decode(&neighbours)
+	if err != nil {
+		return nil, err
+	}
+	return neighbours, nil
 }
 
 func (c *Peer) startListening() error {

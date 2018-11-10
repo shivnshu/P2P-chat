@@ -1,0 +1,39 @@
+package peer
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+)
+
+func (c *Peer) startChatBox() {
+	fmt.Println("Welcome to P2P chat!")
+	fmt.Println("Usage: To send a message to an alias. Type msg -> alias")
+	fmt.Println("       To send message to all online aliases. Type msg -> ALL")
+	messages := make(chan string)
+	go c.openPrompt(messages)
+	go c.chatHelper(messages)
+}
+
+func (c *Peer) openPrompt(messages chan string) {
+	prompt := c.Self.Alias + "> "
+	bio := bufio.NewReader(os.Stdin)
+	for {
+		fmt.Print(prompt)
+		line, _, err := bio.ReadLine()
+		if err != nil {
+			fmt.Println(err)
+			messages <- "/exit"
+			return
+		}
+		messages <- string(line)
+	}
+}
+
+func (c *Peer) chatHelper(messages chan string) {
+	var msg string
+	for {
+		msg = <-messages
+		fmt.Print(msg)
+	}
+}
