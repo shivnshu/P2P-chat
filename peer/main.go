@@ -19,6 +19,11 @@ func Init() error {
 		return fmt.Errorf("Please provide alias to be used to recognize the peer.")
 	}
 
+	if peer_args.BufferSize == 0 {
+		fmt.Printf("Buffer size not provided, using %d as buffer size.\n", iface.DefaultBufferSize)
+		peer_args.BufferSize = iface.DefaultBufferSize
+	}
+
 	peer := Peer{}
 	peer.startPeerNode(peer_args)
 

@@ -1,9 +1,9 @@
 package master
 
 import (
+	"fmt"
 	"github.com/alexflint/go-arg"
 	"github.com/shivnshu/P2P-chat/common/iface"
-	"log"
 )
 
 func Init() error {
@@ -11,7 +11,7 @@ func Init() error {
 	arg.MustParse(&master_args)
 
 	if master_args.Port == 0 {
-		log.Printf("port not supplied, using default port %d", iface.DefaultPort)
+		fmt.Printf("port not supplied, using default port %d", iface.DefaultPort)
 		master_args.Port = iface.DefaultPort
 	}
 

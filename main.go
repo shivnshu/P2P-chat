@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/alexflint/go-arg"
 	"github.com/shivnshu/P2P-chat/common/iface"
@@ -26,6 +25,6 @@ func main() {
 	}
 
 	if err != nil {
-		log.Fatal(err)
+		fmt.Print(err)
 	}
 }
