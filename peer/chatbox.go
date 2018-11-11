@@ -2,7 +2,10 @@ package peer
 
 import (
 	"github.com/marcusolsson/tui-go"
+	"github.com/shivnshu/P2P-chat/common/iface"
 	"log"
+	"strings"
+	"time"
 )
 
 func (c *Peer) startChatBox() {
@@ -25,16 +28,7 @@ func (c *Peer) startChatBox() {
 	chat := tui.NewVBox(historyBox, inputBox)
 	chat.SetSizePolicy(tui.Expanding, tui.Expanding)
 
-	c.printToChat(history, "Welcome to P2P chat!")
-	c.printToChat(history, "Your alias is "+c.Self.Alias+".")
-	c.printToChat(history, "Usage:")
-	c.printToChat(history, "    dummy_alias <= I am dummy message. // Send message to alias 'dummy_alias'")
-	c.printToChat(history, "    ALL <= I am dummy message. // Send message to all online aliases")
-
-	input.OnSubmit(func(e *tui.Entry) {
-		c.submitHandler(history, e.Text())
-		input.SetText("")
-	})
+	c.ChatHistoryBox = history
 
 	root := tui.NewHBox(chat)
 
@@ -44,19 +38,57 @@ func (c *Peer) startChatBox() {
 	}
 
 	ui.SetKeybinding("Esc", func() { ui.Quit() })
+	c.UIPainter = ui
+
+	input.OnSubmit(func(e *tui.Entry) {
+		c.submitHandler(e.Text())
+		input.SetText("")
+	})
+
+	c.printToChat("Welcome to P2P chat!")
+	c.printToChat("Your alias is " + c.Self.Alias + ".")
+	c.printToChat("Usage:")
+	c.printToChat("    dummy_alias <= I am dummy message. // Send message to alias 'dummy_alias'")
+	c.printToChat("    ALL <= I am dummy message. // Send message to all online aliases")
 
 	if err := ui.Run(); err != nil {
 		log.Fatal(err)
 	}
+
 }
 
-func (c *Peer) printToChat(box *tui.Box, str string) {
+func (c *Peer) printToChat(str string) {
+	box := c.ChatHistoryBox
 	box.Append(tui.NewHBox(
 		tui.NewLabel(str),
 		tui.NewSpacer(),
 	))
+	c.UIPainter.Repaint()
 }
 
-func (c *Peer) submitHandler(box *tui.Box, txt string) {
-	c.printToChat(box, txt)
+func (c *Peer) submitHandler(txt string) {
+	msg := strings.Split(txt, "<=")
+	if len(msg) < 2 {
+		c.printToChat("Entered text does not follow the sending format.")
+		return
+	}
+	toAlias := strings.TrimSpace(msg[0])
+	message := strings.TrimSpace(msg[1])
+	c.printToChat(txt)
+	new_msg := iface.Message{}
+	new_msg.ToAlias = toAlias
+	new_msg.FromAlias = c.Self.Alias
+	new_msg.Msg = message
+	new_msg.Time = time.Now()
+	new_msg.TTL = iface.DefaultTTL
+	new_msg.MD5Hash = iface.CalculateMD5Hash(new_msg)
+	c.sendMessage(new_msg)
+}
+
+func (c *Peer) recvMessage(msg iface.Message) {
+	var message string
+	message = msg.ToAlias
+	message += " => "
+	message += msg.Msg
+	c.printToChat(message)
 }

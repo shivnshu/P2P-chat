@@ -11,7 +11,7 @@ func Init() error {
 	arg.MustParse(&master_args)
 
 	if master_args.Port == 0 {
-		fmt.Printf("port not supplied, using default port %d", iface.DefaultPort)
+		fmt.Printf("port not supplied, using default port %d\n", iface.DefaultPort)
 		master_args.Port = iface.DefaultPort
 	}
 

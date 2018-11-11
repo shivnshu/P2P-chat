@@ -22,7 +22,7 @@ func (a Address) String() string {
 	return a.IP + ":" + strconv.Itoa(a.Port)
 }
 
-func calculateMD5Hash(msg Message) string {
+func CalculateMD5Hash(msg Message) string {
 	sumStr := msg.ToAlias + ":" + msg.FromAlias + ":" + msg.Msg + ":" + msg.Time.String()
 	hasher := md5.New()
 	hasher.Write([]byte(sumStr))

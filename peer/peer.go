@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/marcusolsson/tui-go"
 	"github.com/shivnshu/P2P-chat/common/iface"
 	"net/http"
 	"os"
@@ -12,8 +13,10 @@ import (
 )
 
 type Peer struct {
-	Self       iface.PeerInfo
-	Neighbours []iface.PeerInfo
+	Self           iface.PeerInfo
+	Neighbours     []iface.PeerInfo
+	ChatHistoryBox *tui.Box
+	UIPainter      tui.UI
 }
 
 func (c *Peer) startPeerNode(args iface.CommonArgs) {
@@ -75,5 +78,28 @@ func (c *Peer) startListening() error {
 }
 
 func (c *Peer) msgHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("Got a request from %s", r.RemoteAddr)
+	// fmt.Printf("Got a request from %s", r.RemoteAddr)
+	var msg iface.Message
+	err := json.NewDecoder(r.Body).Decode(&msg)
+	if err != nil {
+		return
+	}
+	c.recvMessage(msg)
+}
+
+func (c *Peer) sendMessage(msg iface.Message) {
+	client := &http.Client{}
+
+	var url string
+	for _, peer := range c.Neighbours {
+		url = "http://" + peer.IP + ":" + strconv.Itoa(peer.Port)
+		jsonBytes, _ := json.Marshal(msg)
+		req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonBytes))
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := client.Do(req)
+		if err != nil {
+			continue
+		}
+		defer resp.Body.Close()
+	}
 }
