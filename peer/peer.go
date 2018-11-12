@@ -62,6 +62,7 @@ func (c *Peer) periodicMasterRegistration(ip string, port int) {
 		}
 		c.NeighboursLock.Lock()
 		c.Neighbours = neighbours
+		// c.printToChat(strconv.Itoa(len(c.Neighbours)))
 		c.NeighboursLock.Unlock()
 		time.Sleep(iface.MasterRegistrationInterval * time.Second)
 	}
@@ -111,13 +112,18 @@ func (c *Peer) msgHandler(w http.ResponseWriter, r *http.Request) {
 	if msg.TTL <= 0 {
 		return
 	}
+	// Async as to escape from deadlock
+	go c.asyncMsgHandler(msg)
+}
+
+func (c *Peer) asyncMsgHandler(msg iface.Message) {
+	msg.TTL--
 	if msg.ToAlias == c.Self.Alias {
 		c.recvMessage(msg)
 	} else {
 		if msg.ToAlias == "ALL" {
 			c.recvMessage(msg)
 		}
-		msg.TTL--
 		c.sendMessage(msg)
 	}
 }

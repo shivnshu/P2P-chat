@@ -3,14 +3,15 @@ package master
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/shivnshu/P2P-chat/common/iface"
 	"net/http"
 	"strconv"
-
-	"github.com/shivnshu/P2P-chat/common/iface"
+	"sync"
 )
 
 type Master struct {
-	PeersInfo []iface.PeerInfo
+	PeersInfo     []iface.PeerInfo
+	PeersInfoLock sync.Mutex
 }
 
 func (c *Master) startMasterNode(args iface.CommonArgs) {
@@ -58,18 +59,37 @@ func (c *Master) requestHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.WriteHeader(http.StatusOK)
 	w.Write(data)
+	fmt.Println("Response: ", peersInfo)
 	return
 }
 
-// TODO: Take care of concurrency issues
+// TODO: Randomly select at most buffer size no. of Peer Info and return it
 func (c *Master) getPeersInfo(buffer_size int) []iface.PeerInfo {
 	var result []iface.PeerInfo
+	c.PeersInfoLock.Lock()
 	result = c.PeersInfo
+	c.PeersInfoLock.Unlock()
 	return result
 }
 
-// TODO: Take care of concurrency issues
 func (c *Master) addToPeersInfo(peerInfo iface.PeerInfo) {
-	c.PeersInfo = append(c.PeersInfo, peerInfo)
+	if c.existsInPeersInfo(peerInfo) == false {
+		c.PeersInfoLock.Lock()
+		c.PeersInfo = append(c.PeersInfo, peerInfo)
+		c.PeersInfoLock.Unlock()
+	}
 	return
+}
+
+func (c *Master) existsInPeersInfo(peerInfo iface.PeerInfo) bool {
+	res := false
+	c.PeersInfoLock.Lock()
+	for _, val := range c.PeersInfo {
+		if val.Alias == peerInfo.Alias {
+			res = true
+			break
+		}
+	}
+	c.PeersInfoLock.Unlock()
+	return res
 }

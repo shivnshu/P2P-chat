@@ -92,7 +92,7 @@ func (c *Peer) recvMessage(msg iface.Message) {
 	// Concurrent access
 	c.ReadMsgsLock.Lock()
 	// Do not display same message (identified by its hash) twice
-	if _, ok := c.ReadMsgs["foo"]; ok {
+	if _, ok := c.ReadMsgs[msg.MD5Hash]; ok {
 		c.ReadMsgsLock.Unlock()
 		return
 	}
@@ -100,7 +100,7 @@ func (c *Peer) recvMessage(msg iface.Message) {
 	c.ReadMsgsLock.Unlock()
 
 	var message string
-	message = msg.ToAlias
+	message = msg.FromAlias
 	message += " => "
 	message += msg.Msg
 	c.printToChat(message)
