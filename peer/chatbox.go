@@ -59,11 +59,14 @@ func (c *Peer) startChatBox() {
 
 func (c *Peer) printToChat(str string) {
 	box := c.ChatHistoryBox
+	// Concurrent access
+	c.ChatHistoryBoxLock.Lock()
 	box.Append(tui.NewHBox(
 		tui.NewLabel(str),
 		tui.NewSpacer(),
 	))
 	c.UIPainter.Repaint()
+	c.ChatHistoryBoxLock.Unlock()
 }
 
 func (c *Peer) submitHandler(txt string) {
@@ -86,6 +89,16 @@ func (c *Peer) submitHandler(txt string) {
 }
 
 func (c *Peer) recvMessage(msg iface.Message) {
+	// Concurrent access
+	c.ReadMsgsLock.Lock()
+	// Do not display same message (identified by its hash) twice
+	if _, ok := c.ReadMsgs["foo"]; ok {
+		c.ReadMsgsLock.Unlock()
+		return
+	}
+	c.ReadMsgs[msg.MD5Hash] = true
+	c.ReadMsgsLock.Unlock()
+
 	var message string
 	message = msg.ToAlias
 	message += " => "

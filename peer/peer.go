@@ -10,15 +10,22 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"sync"
+	"time"
 )
 
 type Peer struct {
-	Self           iface.PeerInfo
-	Neighbours     []iface.PeerInfo
-	ChatHistoryBox *tui.Box
-	UIPainter      tui.UI
+	Self               iface.PeerInfo
+	Neighbours         []iface.PeerInfo
+	NeighboursLock     sync.Mutex
+	ChatHistoryBox     *tui.Box
+	ChatHistoryBoxLock sync.Mutex
+	UIPainter          tui.UI
+	ReadMsgs           map[string]bool
+	ReadMsgsLock       sync.Mutex
 }
 
+// Entry point for peer node
 func (c *Peer) startPeerNode(args iface.CommonArgs) {
 	c.Self.IP = args.IP
 	c.Self.Port = args.Port
@@ -32,12 +39,10 @@ func (c *Peer) startPeerNode(args iface.CommonArgs) {
 	var master_port int
 	_, err := fmt.Scanf("%d", &master_port)
 
-	neighbours, err := c.registerWithMaster(master_ip, master_port)
-	if err != nil {
-		panic(err)
-	}
-	c.Neighbours = neighbours
+	go c.periodicMasterRegistration(master_ip, master_port)
 
+	// Initialize ReadMsgs map
+	c.ReadMsgs = make(map[string]bool)
 	go c.startChatBox()
 
 	err = c.startListening()
@@ -47,6 +52,22 @@ func (c *Peer) startPeerNode(args iface.CommonArgs) {
 	}
 }
 
+func (c *Peer) periodicMasterRegistration(ip string, port int) {
+	for {
+		neighbours, err := c.registerWithMaster(ip, port)
+		if err != nil {
+			// panic(err)
+			time.Sleep(iface.MasterRegistrationInterval * time.Second)
+			continue
+		}
+		c.NeighboursLock.Lock()
+		c.Neighbours = neighbours
+		c.NeighboursLock.Unlock()
+		time.Sleep(iface.MasterRegistrationInterval * time.Second)
+	}
+}
+
+// Send request to master node
 func (c *Peer) registerWithMaster(ip string, port int) ([]iface.PeerInfo, error) {
 	master_url := "http://" + ip + ":" + strconv.Itoa(port)
 	master_url = master_url + "?buffer_size=" + strconv.Itoa(iface.DefaultBufferSize)
@@ -57,7 +78,8 @@ func (c *Peer) registerWithMaster(ip string, port int) ([]iface.PeerInfo, error)
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		panic(err)
+		// panic(err)
+		return nil, err
 	}
 	defer resp.Body.Close()
 
@@ -69,6 +91,7 @@ func (c *Peer) registerWithMaster(ip string, port int) ([]iface.PeerInfo, error)
 	return neighbours, nil
 }
 
+// Start listening for messages on user supplied port
 func (c *Peer) startListening() error {
 	addr := iface.GetAddress(c.Self.IP, c.Self.Port).String()
 	fmt.Println("Listening on", addr)
@@ -77,20 +100,36 @@ func (c *Peer) startListening() error {
 	return err
 }
 
+// Handler for any message arrival to its port
+// Accept if it is destined for it else send to all its neighbours
 func (c *Peer) msgHandler(w http.ResponseWriter, r *http.Request) {
-	// fmt.Printf("Got a request from %s", r.RemoteAddr)
 	var msg iface.Message
 	err := json.NewDecoder(r.Body).Decode(&msg)
 	if err != nil {
 		return
 	}
-	c.recvMessage(msg)
+	if msg.TTL <= 0 {
+		return
+	}
+	if msg.ToAlias == c.Self.Alias {
+		c.recvMessage(msg)
+	} else {
+		if msg.ToAlias == "ALL" {
+			c.recvMessage(msg)
+		}
+		msg.TTL--
+		c.sendMessage(msg)
+	}
 }
 
+// Send msg to all its neighbours
 func (c *Peer) sendMessage(msg iface.Message) {
 	client := &http.Client{}
 
 	var url string
+
+	c.NeighboursLock.Lock()
+	// c.printToChat(strconv.Itoa(len(c.Neighbours)))
 	for _, peer := range c.Neighbours {
 		url = "http://" + peer.IP + ":" + strconv.Itoa(peer.Port)
 		jsonBytes, _ := json.Marshal(msg)
@@ -102,4 +141,5 @@ func (c *Peer) sendMessage(msg iface.Message) {
 		}
 		defer resp.Body.Close()
 	}
+	c.NeighboursLock.Unlock()
 }

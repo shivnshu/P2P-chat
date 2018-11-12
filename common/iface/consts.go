@@ -3,10 +3,11 @@ package iface
 import "time"
 
 const (
-	DefaultPort       = 2222
-	DefaultBufferSize = 2
-	DefaultTTL        = 3
-	MAX_PEERS         = 10
+	DefaultPort                = 2222
+	DefaultBufferSize          = 2
+	DefaultTTL                 = 3
+	MasterRegistrationInterval = 30
+	MasterPeerInfoTimeout      = 60
 )
 
 type CommonArgs struct {
