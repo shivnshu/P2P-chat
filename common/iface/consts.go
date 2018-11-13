@@ -19,9 +19,10 @@ type CommonArgs struct {
 }
 
 type PeerInfo struct {
-	IP    string
-	Port  int
-	Alias string
+	IP        string
+	Port      int
+	Alias     string
+	TimeStamp int64
 }
 
 type Message struct {

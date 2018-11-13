@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+	"time"
 )
 
 type Master struct {
@@ -17,10 +18,28 @@ type Master struct {
 func (c *Master) startMasterNode(args iface.CommonArgs) {
 	master_ip := args.IP
 	master_port := args.Port
+	go c.peersInfoPolling()
 	err := c.startListening(master_ip, master_port)
 	if err != nil {
 		fmt.Printf("Unable to start listening @%s:%d\n", master_ip, master_port)
 		return
+	}
+}
+
+func (c *Master) peersInfoPolling() {
+	for {
+		now := time.Now()
+		secs := now.Unix()
+		tmpPeersInfo := []iface.PeerInfo{}
+		c.PeersInfoLock.Lock()
+		for _, val := range c.PeersInfo {
+			if val.TimeStamp > secs-iface.MasterPeerInfoTimeout {
+				tmpPeersInfo = append(tmpPeersInfo, val)
+			}
+		}
+		c.PeersInfo = tmpPeersInfo
+		c.PeersInfoLock.Unlock()
+		time.Sleep(iface.MasterPeerInfoTimeout * time.Second)
 	}
 }
 
@@ -75,6 +94,8 @@ func (c *Master) getPeersInfo(buffer_size int) []iface.PeerInfo {
 func (c *Master) addToPeersInfo(peerInfo iface.PeerInfo) {
 	if c.existsInPeersInfo(peerInfo) == false {
 		c.PeersInfoLock.Lock()
+		now := time.Now()
+		peerInfo.TimeStamp = now.Unix()
 		c.PeersInfo = append(c.PeersInfo, peerInfo)
 		c.PeersInfoLock.Unlock()
 	}
@@ -84,9 +105,12 @@ func (c *Master) addToPeersInfo(peerInfo iface.PeerInfo) {
 func (c *Master) existsInPeersInfo(peerInfo iface.PeerInfo) bool {
 	res := false
 	c.PeersInfoLock.Lock()
-	for _, val := range c.PeersInfo {
+	for i, val := range c.PeersInfo {
 		if val.Alias == peerInfo.Alias {
 			res = true
+			// Update timestamp
+			now := time.Now()
+			c.PeersInfo[i].TimeStamp = now.Unix()
 			break
 		}
 	}
