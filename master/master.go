@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"sync"
 	"time"
+    "math/rand"
 )
 
 type Master struct {
@@ -82,11 +83,16 @@ func (c *Master) requestHandler(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-// TODO: Randomly select at most buffer size no. of Peer Info and return it
 func (c *Master) getPeersInfo(buffer_size int) []iface.PeerInfo {
 	var result []iface.PeerInfo
+    r := rand.New(rand.NewSource(time.Now().Unix()))
 	c.PeersInfoLock.Lock()
-	result = c.PeersInfo
+    for ctr, i := range r.Perm(len(c.PeersInfo)) {
+        if ctr >= buffer_size {
+            break
+        }
+        result = append(result, c.PeersInfo[i]);
+    }
 	c.PeersInfoLock.Unlock()
 	return result
 }

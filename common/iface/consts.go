@@ -4,8 +4,8 @@ import "time"
 
 const (
 	DefaultPort                = 2222
-	DefaultBufferSize          = 2
-	DefaultTTL                 = 3
+	DefaultBufferSize          = 3
+	DefaultTTL                 = 5
 	MasterRegistrationInterval = 30
 	MasterPeerInfoTimeout      = 60
 )
